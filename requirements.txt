@@ -1,0 +1,8 @@
+streamlit
+pandas
+numpy
+requests
+networkx
+pyvis
+plotly
+streamlit-plotly-events
