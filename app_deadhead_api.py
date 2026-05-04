@@ -11,7 +11,7 @@ from streamlit_plotly_events import plotly_events
 import time
 
 st.set_page_config(page_title="Grateful Dead Ultimate Fan App", layout="wide")
-st.title("?? Grateful Dead Ultimate Fan App — API + Cache")
+st.title("?? Grateful Dead Ultimate Fan App â€” API + Cache")
 
 CACHE_FILE = "cached_setlists.csv"
 
