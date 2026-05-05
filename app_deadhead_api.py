@@ -36,6 +36,7 @@ def load_full_setlists():
         page += 1
 
     df_shows = pd.DataFrame(shows)
+    st.write("SHOWS COLUMNS:", df_shows.columns)
 
     setlists = []
     page = 1
