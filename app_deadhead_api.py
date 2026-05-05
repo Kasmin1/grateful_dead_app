@@ -50,7 +50,7 @@ def load_full_setlists():
 
     df_sets = pd.DataFrame(setlists)
 
-    df = df_sets.merge(df_shows, left_on="show_id", right_on="id", how="left")
+    df = df_sets.merge(df_shows, on="show_id", how="left")
 
     df["date"] = pd.to_datetime(df["date"])
     df["song"] = df["song"].str.title()
