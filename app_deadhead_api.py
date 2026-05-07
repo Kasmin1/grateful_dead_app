@@ -17,47 +17,85 @@ CACHE_FILE = "cached_setlists.csv"
 
 @st.cache_data(show_spinner=True)
 def load_full_setlists():
+
     if os.path.exists(CACHE_FILE):
         st.info("Loading dataset from local cache...")
-        df = pd.read_csv(CACHE_FILE, parse_dates=['date'])
-        return df
+        return pd.read_csv(CACHE_FILE)
 
     st.info("Fetching dataset from Bearly Dead API...")
     base_url = "https://bearlydead.songfishapp.com/api/v2/"
-    
+
+    # -----------------------
+    # LOAD SHOWS
+    # -----------------------
     shows = []
     page = 1
+
     while True:
         resp = requests.get(f"{base_url}shows.json?page={page}")
+
+        if resp.status_code != 200:
+            st.error(f"Failed loading shows page {page}")
+            break
+
         data = resp.json().get("data", [])
+
         if not data:
             break
+
         shows.extend(data)
         page += 1
 
     df_shows = pd.DataFrame(shows)
-    st.write("SHOWS COLUMNS:", df_shows.columns)
 
+    st.write("SHOWS COLUMNS:", df_shows.columns.tolist())
+
+    # -----------------------
+    # LOAD SETLISTS
+    # -----------------------
     setlists = []
     page = 1
+
     while True:
         resp = requests.get(f"{base_url}setlists.json?page={page}")
+
+        if resp.status_code != 200:
+            st.error(f"Failed loading setlists page {page}")
+            break
+
         data = resp.json().get("data", [])
+
         if not data:
             break
+
         setlists.extend(data)
         page += 1
 
     df_sets = pd.DataFrame(setlists)
 
-    df = df_sets.merge(df_shows, on="show_id", how="left")
+    st.write("SETLIST COLUMNS:", df_sets.columns.tolist())
 
-    df["date"] = pd.to_datetime(df["date"])
-    df["song"] = df["song"].str.title()
-    df["venue"] = df["venue"].str.title()
-    df["city"] = df["city"].str.title()
+    # -----------------------
+    # SAFE MERGE
+    # -----------------------
+    if "show_id" in df_sets.columns and "show_id" in df_shows.columns:
+        df = df_sets.merge(df_shows, on="show_id", how="left")
+    else:
+        st.error("show_id missing from datasets")
+        st.stop()
+
+    # -----------------------
+    # SAFE CLEANING
+    # -----------------------
+    for col in ["song", "venue", "city"]:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.title()
+
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
 
     df.to_csv(CACHE_FILE, index=False)
+
     return df
 
 df = load_full_setlists()
