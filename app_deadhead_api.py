@@ -75,14 +75,47 @@ def load_full_setlists():
 
     st.write("SETLIST COLUMNS:", df_sets.columns.tolist())
 
-    # -----------------------
-    # SAFE MERGE
-    # -----------------------
-    if "show_id" in df_sets.columns and "show_id" in df_shows.columns:
-        df = df_sets.merge(df_shows, on="show_id", how="left")
-    else:
-        st.error("show_id missing from datasets")
-        st.stop()
+   # -----------------------
+# DEBUG COLUMN NAMES
+# -----------------------
+
+st.write("SHOWS COLUMNS:", df_shows.columns.tolist())
+st.write("SETLIST COLUMNS:", df_sets.columns.tolist())
+
+# -----------------------
+# DETERMINE MERGE KEY
+# -----------------------
+
+possible_show_cols = ["show_id", "id", "showid"]
+
+show_col_shows = None
+show_col_sets = None
+
+for col in possible_show_cols:
+    if col in df_shows.columns:
+        show_col_shows = col
+
+for col in possible_show_cols:
+    if col in df_sets.columns:
+        show_col_sets = col
+
+st.write("SHOW MERGE COL:", show_col_shows)
+st.write("SETLIST MERGE COL:", show_col_sets)
+
+if show_col_shows is None or show_col_sets is None:
+    st.error("Could not determine merge columns")
+    st.stop()
+
+# -----------------------
+# MERGE
+# -----------------------
+
+df = df_sets.merge(
+    df_shows,
+    left_on=show_col_sets,
+    right_on=show_col_shows,
+    how="left"
+)
 
     # -----------------------
     # SAFE CLEANING
