@@ -3,7 +3,10 @@ import pandas as pd
 import requests
 import streamlit as st
 
-st.set_page_config(page_title="Grateful Dead Ultimate Fan App", layout="wide")
+st.set_page_config(
+    page_title="Grateful Dead Ultimate Fan App",
+    layout="wide"
+)
 
 st.title("Grateful Dead Ultimate Fan App")
 
@@ -13,7 +16,15 @@ CACHE_FILE = "cached_setlists.csv"
 @st.cache_data(show_spinner=True)
 def load_full_setlists():
 
-    st.write("Starting API load...")
+    # -----------------------
+    # USE CACHE IF EXISTS
+    # -----------------------
+
+    if os.path.exists(CACHE_FILE):
+        st.info("Loading cached dataset...")
+        return pd.read_csv(CACHE_FILE)
+
+    st.info("Fetching data from Bearly Dead API...")
 
     base_url = "https://bearlydead.songfishapp.com/api/v2/"
 
@@ -22,54 +33,122 @@ def load_full_setlists():
     # -----------------------
 
     shows = []
+    page = 1
 
-    try:
-        resp = requests.get(f"{base_url}shows.json?page=1")
-        st.write("SHOWS STATUS:", resp.status_code)
+    while True:
 
-        data = resp.json()
+        resp = requests.get(f"{base_url}shows.json?page={page}")
 
-        st.write("SHOWS RAW:", data)
+        if resp.status_code != 200:
+            st.error(f"Failed loading shows page {page}")
+            break
 
-        shows = data.get("data", [])
+        data = resp.json().get("data", [])
 
-    except Exception as e:
-        st.error(f"SHOWS ERROR: {e}")
-        st.stop()
+        if not data:
+            break
+
+        shows.extend(data)
+
+        page += 1
 
     df_shows = pd.DataFrame(shows)
-
-    st.write("SHOWS DF COLUMNS:", df_shows.columns.tolist())
 
     # -----------------------
     # LOAD SETLISTS
     # -----------------------
 
     setlists = []
+    page = 1
 
-    try:
-        resp = requests.get(f"{base_url}setlists.json?page=1")
-        st.write("SETLIST STATUS:", resp.status_code)
+    while True:
 
-        data = resp.json()
+        resp = requests.get(f"{base_url}setlists.json?page={page}")
 
-        st.write("SETLIST RAW:", data)
+        if resp.status_code != 200:
+            st.error(f"Failed loading setlists page {page}")
+            break
 
-        setlists = data.get("data", [])
+        data = resp.json().get("data", [])
 
-    except Exception as e:
-        st.error(f"SETLIST ERROR: {e}")
-        st.stop()
+        if not data:
+            break
+
+        setlists.extend(data)
+
+        page += 1
 
     df_sets = pd.DataFrame(setlists)
 
-    st.write("SETLIST DF COLUMNS:", df_sets.columns.tolist())
-
     # -----------------------
-    # STOP BEFORE MERGE
+    # MERGE
     # -----------------------
 
-    st.stop()
+    df = df_sets.merge(
+        df_shows,
+        on="show_id",
+        how="left",
+        suffixes=("_set", "_show")
+    )
+
+    # -----------------------
+    # CLEANING
+    # -----------------------
+
+    if "showdate" in df.columns:
+        df["showdate"] = pd.to_datetime(
+            df["showdate"],
+            errors="coerce"
+        )
+
+    string_cols = [
+        "songname",
+        "venuename",
+        "city",
+        "state",
+        "country",
+        "tourname"
+    ]
+
+    for col in string_cols:
+
+        if col in df.columns:
+
+            df[col] = (
+                df[col]
+                .astype(str)
+                .str.title()
+            )
+
+    # -----------------------
+    # SAVE CACHE
+    # -----------------------
+
+    df.to_csv(CACHE_FILE, index=False)
+
+    return df
 
 
-df = load_full_setlists()                                                                                 
+# -----------------------
+# LOAD DATA
+# -----------------------
+
+df = load_full_setlists()
+
+# -----------------------
+# DISPLAY
+# -----------------------
+
+st.success(f"Loaded {len(df):,} rows")
+
+st.dataframe(
+    df[
+        [
+            "showdate",
+            "songname",
+            "venuename",
+            "city",
+            "state"
+        ]
+    ].head(50)
+)
