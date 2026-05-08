@@ -169,3 +169,15 @@ existing_cols = [
 st.dataframe(
     df[existing_cols].head(50)
 )
+
+st.subheader("Top Songs")
+
+top_songs = (
+    df["songname"]
+    .value_counts()
+    .reset_index()
+)
+
+top_songs.columns = ["Song", "Count"]
+
+st.dataframe(top_songs.head(25))
